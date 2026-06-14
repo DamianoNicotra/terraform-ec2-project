@@ -1,63 +1,37 @@
-# Terraform EC2 Project
+# terraform-ec2-project
 
-This project demonstrates how to create an EC2 instance on AWS using Terraform, including:
+[![Terraform CI](https://github.com/DamianoNicotra/terraform-ec2-project/actions/workflows/terraform.yml/badge.svg)](https://github.com/DamianoNicotra/terraform-ec2-project/actions/workflows/terraform.yml)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- Security Group (SSH port 22 and HTTP port 80)
-- Auto-generated SSH key pair
-- User data script to install Docker and run an Nginx container
+Deploy an EC2 instance with Nginx and Docker using Terraform.
 
-## Architecture
+## Architecture Decisions
 
-| Component | Port | Protocol | Description |
-|-----------|------|----------|-------------|
-| User → EC2 | 22 | SSH | Secure shell access to the VM |
-| User → EC2 | 80 | HTTP | Web traffic to Nginx |
-| EC2 → Docker | - | - | Runs Nginx container internally |
-| Docker → Nginx | 80 | HTTP | Serves web pages |
+| Decision | Reason |
+|----------|--------|
+| **EC2 vs ECS** | EC2 gives full control and is cheaper for simple workloads. ECS adds unnecessary complexity. |
+| **Nginx vs Apache** | Nginx is lightweight, easier to configure, and better for static content. |
+| **User_data script** | Automates Docker installation and container startup. No manual SSH required. |
+| **Terraform vs CloudFormation** | Terraform is cloud-agnostic, easier to read, and has better community support. |
 
-**Flow:** User connects via HTTP (port 80) → EC2 instance running Docker → Nginx container serves the page.
-**Admin access:** User connects via SSH (port 22) → EC2 instance for management.
+## Known Limitations
 
-## Resources Created
+- No load balancer → single point of failure
+- No auto-scaling → cannot handle traffic spikes
+- No HTTPS → TLS not configured
+- Terraform state stored locally → not safe for team use
 
-| Resource | Description |
-|----------|-------------|
-| `aws_security_group` | Firewall: allows SSH and HTTP |
-| `tls_private_key` + `aws_key_pair` | SSH key pair to connect to the VM |
-| `aws_instance` (EC2) | Ubuntu 24.04 VM with user_data |
-| `local_file` | Saves the private key locally |
+## How to Improve
 
-## How to Use
+- Add ALB (Application Load Balancer) + Auto Scaling Group for high availability
+- Add CloudWatch dashboard for monitoring CPU and memory
+- Move Terraform state to S3 backend with DynamoDB lock
+- Add HTTPS with ACM (AWS Certificate Manager)
 
+## Cost Control
+
+**This infrastructure is designed to be destroyable.**
+
+After testing, run:
 ```bash
-terraform init
-terraform plan
-terraform apply -auto-approve
-
-Outputs
-
-After terraform apply, you will see:
-
-- instance_public_ip: Public IP address of the VM
-- website_url: URL to see Nginx running
-- ssh_command: Command to connect via SSH
-
-Test
-
-# Open in browser
-http://<PUBLIC_IP>
-
-# Connect via SSH
-ssh -i terraform-ec2-key-demo.pem ubuntu@<PUBLIC_IP>
-
-# Verify Docker is running
-sudo docker ps
-
-Cleanup
 terraform destroy -auto-approve
-
-Screenshots
-
-lsla.png
-nginx.png
-dockerps.png
